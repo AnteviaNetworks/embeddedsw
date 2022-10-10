@@ -165,8 +165,6 @@
 
 /* IIC Serial Clock rate */
 #define XFSBL_IIC_SCLK_RATE		100000U
-/* IIC Mux Address */
-#define XFSBL_MUX_ADDR			0x75U
 /* SODIMM Slave Address */
 #define XFSBL_SODIMM_SLAVE_ADDR		0x51U
 /* SODIMM Control Address Low */
@@ -6639,46 +6637,6 @@ static u32 XFsbl_IicReadSpdEeprom(u8 *SpdData)
 
 	/* Set the Serial Clock for I2C */
 	Status = XIicPs_SetSClk(&IicInstance, XFSBL_IIC_SCLK_RATE);
-	if (Status != XST_SUCCESS) {
-		UStatus = XFSBL_FAILURE;
-		goto END;
-	}
-
-	/*
-	 * Configure I2C Mux to select DDR4 SODIMM Slave
-	 * 0x08U - Enable DDR4 SODIMM module
-	 */
-	TxArray = 0x08U;
-	XIicPs_MasterSendPolled(&IicInstance, &TxArray, 1U, XFSBL_MUX_ADDR);
-
-	/*
-	 * Wait until bus is idle to start another transfer.
-	 */
-	Status = XFsbl_PollTimeout(IicInstance.Config.BaseAddress +
-			XIICPS_SR_OFFSET, Regval, (Regval & XIICPS_SR_BA_MASK) == 0x0U,
-			XFSBL_IIC_BUS_TIMEOUT);
-	if (Status != XST_SUCCESS) {
-		UStatus = XFSBL_FAILURE;
-		goto END;
-	}
-
-	/*
-	 * Get Configuration to confirm the selection of the slave
-	 * device.
-	 */
-	Status = XIicPs_MasterRecvPolled(&IicInstance, SpdData, 1U,
-			XFSBL_MUX_ADDR);
-	if (Status != XST_SUCCESS) {
-		UStatus = XFSBL_FAILURE;
-		goto END;
-	}
-	/*
-	 * Wait until bus is idle to start another transfer.
-	 */
-	Status = XFsbl_PollTimeout(IicInstance.Config.BaseAddress +
-			XIICPS_SR_OFFSET, Regval, (Regval &
-				XIICPS_SR_BA_MASK) == 0x0U,
-			XFSBL_IIC_BUS_TIMEOUT);
 	if (Status != XST_SUCCESS) {
 		UStatus = XFSBL_FAILURE;
 		goto END;
