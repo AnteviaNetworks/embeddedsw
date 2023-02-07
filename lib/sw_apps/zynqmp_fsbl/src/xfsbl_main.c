@@ -345,8 +345,7 @@ void XFsbl_PrintFsblBanner(void )
 	XFsbl_Printf(DEBUG_PRINT_ALWAYS,
                  "Xilinx Zynq MP First Stage Boot Loader \n\r");
 	XFsbl_Printf(DEBUG_PRINT_ALWAYS,
-//                 "Release %d.%d   %s  -  %s\r\n",
-                 "DDR POST CHECK Release %d.%d   %s  -  %s\r\n",
+                 "Release %d.%d   %s  -  %s\r\n",
                  SDK_RELEASE_YEAR, SDK_RELEASE_QUARTER,__DATE__,__TIME__);
 
 	XFsbl_Printf(DEBUG_GENERAL, "MultiBootOffset: 0x%0x\r\n",
