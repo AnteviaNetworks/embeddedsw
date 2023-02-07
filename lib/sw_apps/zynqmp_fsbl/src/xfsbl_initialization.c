@@ -99,6 +99,7 @@ static void XFsbl_ClearPendingInterrupts(void);
 #ifdef XFSBL_TPM
 static u32 XFsbl_MeasureFsbl(u8* PartitionHash);
 #endif
+u32 DDRInitCheck(void);
 
 /* Functions from xfsbl_misc.c */
 
@@ -401,6 +402,15 @@ u32 XFsbl_Initialize(XFsblPs * FsblInstancePtr)
 	}
 
 	XFsbl_Printf(DEBUG_INFO,"Processor Initialization Done \n\r");
+	
+	if (XST_SUCCESS != DDRInitCheck()) {
+	    XFsbl_Printf(DEBUG_PRINT_ALWAYS,"DDR Init Check Failed \r\n");
+		goto END;
+	}
+	else {
+	    XFsbl_Printf(DEBUG_PRINT_ALWAYS,"DDR Init Check Passed \r\n");
+	}
+	
 #ifdef XFSBL_TPM
 	Status = XFsbl_TpmInit();
 	if (XFSBL_SUCCESS != Status) {
@@ -2101,3 +2111,77 @@ END:
 	return Status;
 }
 #endif
+
+u32 DDRInitCheck(void)
+{
+
+#define DDR_TEST_PATTERN	0xAA55AA55
+#define DDR_TEST_OFFSET		0x7FFFFFFC // 8GiB
+#define DDR_OFFSET_8GiB		0x80000000 // 8GiB
+	u32 ReadVal;
+	u32 addrlowestInvalid = DDR_OFFSET_8GiB; 
+	u32 addr, data;
+	
+	u32 size = DDRSize();
+	XFsbl_Printf(DEBUG_PRINT_ALWAYS,"Size = 0x%08x \r\n", size);
+	
+	// DATA BUS: Test data traces shorted/open
+	addr = 4;
+	for (int i = 1, data = 1;  i < 32; i++, data <<= 1) {
+		Xil_Out32(addr, data);
+	    ReadVal = Xil_In32(addr);
+	    if (ReadVal != data) {
+	        XFsbl_Printf(DEBUG_PRINT_ALWAYS,"ERROR %08x: 0x%08x (exp. 0x%08x)\r\n", addr, ReadVal, data);
+		    return XST_FAILURE;
+		}
+		u32 invData = ~data;
+		Xil_Out32(addr, invData);
+	    ReadVal = Xil_In32(addr);
+	    if (ReadVal != invData) {
+	        XFsbl_Printf(DEBUG_PRINT_ALWAYS,"ERROR %08x: 0x%08x (exp. 0x%08x)\r\n", addr, ReadVal, invData);
+		    return XST_FAILURE;
+		}
+	}
+
+    // ADDRESS BUS: Test for address traces shorted/open
+    // special case must skip address=0 which will trap ... so just test access of bytes at addresses between 1 and 4
+	addr = 1; 
+	Xil_Out32(addr, DDR_TEST_PATTERN);
+	ReadVal = Xil_In32(addr);
+	if (ReadVal != DDR_TEST_PATTERN) {
+	    XFsbl_Printf(DEBUG_PRINT_ALWAYS,"ERROR %08x: 0x%08x (exp. 0x%08x)\r\n", addr, ReadVal, DDR_TEST_PATTERN);
+		return XST_FAILURE;
+	}
+	
+	// walking 1 of address bus tests for short on address line
+	for (addr = 0x4; addr < addrlowestInvalid; addr <<= 1) {
+		data = addr;
+		Xil_Out32(addr, data);
+	}
+	for (addr = 0x4; addr < addrlowestInvalid; addr <<= 1) {
+		data = addr;
+		ReadVal = Xil_In32(addr);
+		if (ReadVal != data) {
+		    XFsbl_Printf(DEBUG_PRINT_ALWAYS,"ERROR %08x: 0x%08x (exp. 0x%08x)\r\n", addr, ReadVal, data);
+			return XST_FAILURE;
+		}
+	}
+	
+	// walking 0 of address bus tests for open on address line
+	for (addr = 4; addr < addrlowestInvalid; addr <<= 1) {
+		u32 w0Addr = addr^(addrlowestInvalid-1);
+		data = addr;
+		Xil_Out32(w0Addr, data);
+	}
+	for (addr = 4; addr < addrlowestInvalid; addr <<= 1) {
+		u32 w0Addr = addr^(addrlowestInvalid-1);
+		data = addr;
+		ReadVal = Xil_In32(w0Addr);
+		if (ReadVal != data) {
+		    XFsbl_Printf(DEBUG_PRINT_ALWAYS,"ERROR %08x: 0x%08x (exp. 0x%08x)\r\n", w0Addr, ReadVal, data);
+			return XST_FAILURE;
+		}
+	}	
+
+	return XST_SUCCESS;
+}
