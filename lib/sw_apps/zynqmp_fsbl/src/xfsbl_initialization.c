@@ -2122,9 +2122,6 @@ u32 DDRInitCheck(void)
 	u32 addrlowestInvalid = DDR_OFFSET_8GiB; 
 	u32 addr, data;
 	
-	u32 size = DDRSize();
-	XFsbl_Printf(DEBUG_PRINT_ALWAYS,"Size = 0x%08x \r\n", size);
-	
 	// DATA BUS: Test data traces shorted/open
 	addr = 4;
 	for (int i = 1, data = 1;  i < 32; i++, data <<= 1) {
