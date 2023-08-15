@@ -164,9 +164,9 @@
 #define XFSBL_HIF_RANK(XVal)				(500U + (XVal))
 
 /* IIC Serial Clock rate */
-#define XFSBL_IIC_SCLK_RATE		100000U
+#define XFSBL_IIC_SCLK_RATE		90000U
 /* SODIMM Slave Address */
-#define XFSBL_SODIMM_SLAVE_ADDR		0x51U
+#define XFSBL_SODIMM_SLAVE_ADDR		0x53U
 /* SODIMM Control Address Low */
 #define XFSBL_SODIMM_CONTROL_ADDR_LOW	0x36U
 /* SODIMM Control Address High */
@@ -6620,8 +6620,8 @@ static u32 XFsbl_IicReadSpdEeprom(u8 *SpdData)
 	u32 UStatus;
 	u32 Regval = 0U;
 
-	/* Lookup for I2C-1U device */
-	ConfigIic = XIicPs_LookupConfig(XPAR_PSU_I2C_1_DEVICE_ID);
+	/* Lookup for I2C-0U device */
+	ConfigIic = XIicPs_LookupConfig(XPAR_PSU_I2C_0_DEVICE_ID);
 	if (!ConfigIic) {
 		UStatus = XFSBL_FAILURE;
 		goto END;
