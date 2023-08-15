@@ -74,6 +74,7 @@
 #include "xfsbl_authentication.h"
 #include "xfsbl_ddr_init.h"
 #include "xfsbl_tpm.h"
+#include "xuartps.h"
 
 /************************** Constant Definitions *****************************/
 #define PART_NAME_LEN_MAX		20U
@@ -83,6 +84,12 @@
 /**************************** Type Definitions *******************************/
 
 /***************** Macros (Inline Functions) Definitions *********************/
+
+#if ((XPAR_XUARTPS_NUM_INSTANCES == 2U) && (STDOUT_BASEADDRESS == 0xFF010000U))
+#define XFSBL_UART_INDEX          (1U)
+#else
+#define XFSBL_UART_INDEX          (0U)
+#endif
 
 /************************** Function Prototypes ******************************/
 static u32 XFsbl_ProcessorInit(XFsblPs * FsblInstancePtr);
@@ -151,6 +158,10 @@ extern u8 AuthBuffer[XFSBL_AUTH_BUFFER_SIZE];
 extern u32 Iv[XIH_BH_IV_LENGTH / 4U];
 #endif
 u32 SdCdnRegVal;
+#if defined(XFSBL_UART_ENABLE) && defined(STDOUT_BASEADDRESS)
+static XUartPs Uart_Ps;
+#endif
+
 /****************************************************************************/
 /**
  * This function is used to save the data section into duplicate data section
@@ -739,6 +750,44 @@ END:
 	return Status;
 }
 
+#if defined(XFSBL_UART_ENABLE) && defined(STDOUT_BASEADDRESS)
+/*****************************************************************************/
+/**
+ * This function perform the initial configuration for the UART Device.
+ *
+ * @param       None.
+ *
+ * @return      XST_SUCCESS if pass, otherwise XST_FAILURE.
+ *
+ ****************************************************************************/
+int XFsbl_UartInit(void)
+{
+        int Status = XST_FAILURE;
+        XUartPs_Config *Config;
+
+        /*
+         * Initialize the UART driver so that it's ready to use
+         * Look up the configuration in the config table and then initialize it.
+         */
+        Config = XUartPs_LookupConfig(XFSBL_UART_INDEX);
+        if (NULL == Config) {
+                Status = XFSBL_FAILURE;
+                goto END;
+        }
+
+        Status = XUartPs_CfgInitialize(&Uart_Ps, Config, Config->BaseAddress);
+        if (Status != XST_SUCCESS) {
+                Status = XFSBL_FAILURE;
+                goto END;
+        }
+
+        XUartPs_SetBaudRate(&Uart_Ps, 115200U);
+
+END:
+        return Status;
+}
+#endif
+
 /*****************************************************************************/
 /**
  * This function initializes the system using the psu_init()
@@ -802,6 +851,18 @@ static u32 XFsbl_SystemInit(XFsblPs * FsblInstancePtr)
 	if (XFSBL_SUCCESS != Status) {
 		goto END;
 	}
+
+#if defined(XFSBL_UART_ENABLE) && defined(STDOUT_BASEADDRESS)
+        Status = XFsbl_UartInit();
+        if (XFSBL_SUCCESS != Status) {
+                goto END;
+        }
+#if defined XFSBL_SLOW_UART_US && XFSBL_SLOW_UART_US > 0
+        // wait for USB devices to enumerate on console host
+        usleep(XFSBL_SLOW_UART_US);
+#endif
+        XFsbl_Printf(DEBUG_GENERAL, "\r\nXFSBL Console Debug available\r\n");
+#endif
 
 #ifdef XFSBL_PS_DDR
 #ifdef XPAR_DYNAMIC_DDR_ENABLED
