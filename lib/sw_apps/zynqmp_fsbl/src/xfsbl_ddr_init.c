@@ -166,7 +166,11 @@
 /* IIC Serial Clock rate */
 #define XFSBL_IIC_SCLK_RATE		90000U
 /* SODIMM Slave Address */
+#ifdef XFSBL_ZU19_FHC_ES2
 #define XFSBL_SODIMM_SLAVE_ADDR		0x53U
+#else
+#define XFSBL_SODIMM_SLAVE_ADDR		0x51U
+#endif
 /* SODIMM Control Address Low */
 #define XFSBL_SODIMM_CONTROL_ADDR_LOW	0x36U
 /* SODIMM Control Address High */
